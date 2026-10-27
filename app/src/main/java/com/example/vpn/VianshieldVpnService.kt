@@ -82,8 +82,15 @@ class VianshieldVpnService : VpnService(), SingBoxPlatformCallback {
         when (action) {
             ACTION_START_VPN -> {
                 val configStr = intent.getStringExtra(EXTRA_CONFIG_STRING)
-                    ?: WireGuardConfigParser.createDefaultTestConfig()
-                handleStartVpn(configStr, startId)
+                if (configStr.isNullOrBlank()) {
+                    val message = "No WireGuard profile supplied; import a .conf file before connecting."
+                    OperationalLogCatcher.error(LogCategory.CONFIG_VALIDATION, "VpnService", message)
+                    _vpnState.value = VpnState.Error("ERR_CONFIG_MISSING", message)
+                    stopForegroundSafely()
+                    stopSelfResult(startId)
+                } else {
+                    handleStartVpn(configStr, startId)
+                }
             }
             ACTION_STOP_VPN -> {
                 handleStopVpn(startId)
