@@ -1,0 +1,139 @@
+name: Build Vianshield dual-ABI APK
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      singbox_version:
+        description: "sing-box Git tag to compile"
+        required: true
+        default: "v1.11.0"
+
+permissions:
+  contents: read
+
+jobs:
+  build-singbox-engine:
+    name: Build upstream sing-box libbox.aar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sing-box repository
+        uses: actions/checkout@v4
+        with:
+          repository: SagerNet/sing-box
+          ref: ${{ github.event.inputs.singbox_version || 'v1.11.0' }}
+          path: sing-box-source
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: sing-box-source/go.sum
+
+      - name: Set up Android NDK
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          add-to-path: true
+
+      - name: Configure Android NDK environment
+        shell: bash
+        run: |
+          NDK_PATH="${{ steps.setup-ndk.outputs.ndk-path }}"
+          if [ -z "$NDK_PATH" ] || [ ! -d "$NDK_PATH" ]; then
+            if [ -d "${ANDROID_HOME}/ndk/26.3.11579264" ]; then
+              NDK_PATH="${ANDROID_HOME}/ndk/26.3.11579264"
+            elif [ -d "/usr/local/lib/android/sdk/ndk/26.3.11579264" ]; then
+              NDK_PATH="/usr/local/lib/android/sdk/ndk/26.3.11579264"
+            fi
+          fi
+          test -d "$NDK_PATH"
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> "$GITHUB_ENV"
+          echo "$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin" >> "$GITHUB_PATH"
+          echo "Using NDK: $NDK_PATH"
+
+      - name: Verify toolchain
+        run: |
+          go version
+          "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/clang" --version | head -n 1
+
+      - name: Install sing-box mobile build tools
+        working-directory: sing-box-source
+        run: make lib_install
+
+      - name: Compile Android libbox
+        working-directory: sing-box-source
+        run: go run ./cmd/internal/build_libbox -target android
+
+      - name: Verify libbox artifact and required ABIs
+        shell: bash
+        run: |
+          test -s sing-box-source/libbox.aar
+          unzip -l sing-box-source/libbox.aar | tee libbox-contents.txt
+          grep -q 'jni/armeabi-v7a/' libbox-contents.txt
+          grep -q 'jni/arm64-v8a/' libbox-contents.txt
+
+      - name: Upload libbox.aar
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbox-aar
+          path: sing-box-source/libbox.aar
+          retention-days: 14
+
+  build-vianshield-apk:
+    name: Build universal ARMv7 + ARM64 APK
+    needs: build-singbox-engine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Vianshield
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download libbox.aar
+        uses: actions/download-artifact@v4
+        with:
+          name: libbox-aar
+          path: app/libs
+
+      - name: Verify engine library placement
+        run: test -s app/libs/libbox.aar
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.3.1"
+          cache-provider: basic
+
+      - name: Build one APK containing both ARM ABIs
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Verify packaged APK contains both ARM ABIs
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -l "$APK" | tee apk-contents.txt
+          grep -q 'lib/armeabi-v7a/' apk-contents.txt
+          grep -q 'lib/arm64-v8a/' apk-contents.txt
+          mkdir -p dist
+          cp "$APK" dist/vianshield-debug-universal-arm32-arm64.apk
+          ls -lh dist/*.apk
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vianshield-debug-universal-arm32-arm64
+          path: dist/vianshield-debug-universal-arm32-arm64.apk
+          retention-days: 14
