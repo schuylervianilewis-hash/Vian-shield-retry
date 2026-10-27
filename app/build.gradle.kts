@@ -40,6 +40,8 @@ android {
 }
 
 dependencies {
+    // The CI workflow injects the compiled upstream libbox.aar into app/libs before building.
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
