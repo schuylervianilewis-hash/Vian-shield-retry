@@ -63,7 +63,7 @@ class DiagnosticViewModel(application: Application) : AndroidViewModel(applicati
     private val _sortNewestFirst = MutableStateFlow(true)
     val sortNewestFirst: StateFlow<Boolean> = _sortNewestFirst.asStateFlow()
 
-    private val _currentConfig = MutableStateFlow(WireGuardConfigParser.createDefaultTestConfig())
+    private val _currentConfig = MutableStateFlow("")
     val currentConfig: StateFlow<String> = _currentConfig.asStateFlow()
 
     private val _importedProfilePreview = MutableStateFlow<WireGuardProfile?>(null)
@@ -157,6 +157,10 @@ class DiagnosticViewModel(application: Application) : AndroidViewModel(applicati
                 lifecycleController.requestStopVpn()
             }
             is VpnState.Stopped, is VpnState.Error -> {
+                if (_currentConfig.value.isBlank()) {
+                    _importError.value = "Import a WireGuard .conf profile before connecting."
+                    return
+                }
                 lifecycleController.requestStartVpn(_currentConfig.value, permissionLauncher)
             }
             is VpnState.Stopping -> {
