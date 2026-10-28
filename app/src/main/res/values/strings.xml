@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vianshield</string>
+    <string name="vpn_title">Vianshield VPN</string>
+    <string name="vpn_service_desc">Vianshield sing-box network tunnel</string>
+    <string name="vpn_status_stopped">Disconnected</string>
+    <string name="vpn_status_starting">Connecting…</string>
+    <string name="vpn_status_connected">Connected</string>
+    <string name="vpn_status_stopping">Disconnecting…</string>
+    <string name="vpn_status_error">Error</string>
+    <string name="btn_start_vpn">Connect</string>
+    <string name="btn_stop_vpn">Disconnect</string>
+    <string name="btn_clear_logs">Clear logs</string>
+    <string name="btn_export_logs">Export logs</string>
+    <string name="logs_copied_toast">Logs copied to clipboard</string>
+    <string name="channel_vpn_name">Vianshield tunnel status</string>
+    <string name="channel_vpn_desc">Status of the active VPN tunnel and firewall engine.</string>
+</resources>

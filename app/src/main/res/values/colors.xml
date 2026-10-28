@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="vianshield_sky_blue">#0284C7</color>
+    <color name="vianshield_white">#FFFFFFFF</color>
+    <color name="vianshield_text">#0F172A</color>
+</resources>
