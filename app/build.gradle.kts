@@ -9,6 +9,24 @@ android {
         version = release(36) { minorApiLevel = 1 }
     }
 
+    // Keep Vianshield's original signing behavior for AI Studio installs and updates.
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+            storeFile = file(keystorePath)
+            storePassword = System.getenv("STORE_PASSWORD")
+            keyAlias = "upload"
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+        create("debugConfig") {
+            val debugKeystorePath = System.getenv("DEBUG_KEYSTORE_PATH") ?: "${rootDir}/debug.keystore"
+            storeFile = file(debugKeystorePath)
+            storePassword = System.getenv("DEBUG_STORE_PASSWORD") ?: "android"
+            keyAlias = System.getenv("DEBUG_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("DEBUG_KEY_PASSWORD") ?: "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.aistudio.vianshield.vxnpqk"
         minSdk = 24
@@ -16,6 +34,23 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isCrunchPngs = false
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            val customDebugKeystore = file(System.getenv("DEBUG_KEYSTORE_PATH") ?: "${rootDir}/debug.keystore")
+            signingConfig = if (customDebugKeystore.exists()) {
+                signingConfigs.getByName("debugConfig")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+        }
     }
 
     compileOptions {
