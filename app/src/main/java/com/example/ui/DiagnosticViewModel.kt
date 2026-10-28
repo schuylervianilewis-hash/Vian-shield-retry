@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 
 enum class AppScreen {
     MAIN,
+    SETTINGS,
     LOG_KEEPER
 }
 
